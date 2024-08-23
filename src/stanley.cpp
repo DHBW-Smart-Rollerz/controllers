@@ -8,7 +8,6 @@ StanleyControllerNode::StanleyControllerNode()
 {
   // Variables
   k_ = 0.5;
-
   // Initialize subscribers
   refpose_subscriber_ = this->create_subscription<geometry_msgs::msg::Vector3>(
       "/controller/ref_pose", 1,
