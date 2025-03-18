@@ -16,32 +16,36 @@ class ControllerNode(Node):
 
         self.pid_controller = PIDController(2, 1, 0.5)
         self.current = 0
-        self.target = 0
+        self.limit = 0
 
         self.publisher = self.create_publisher(Float32, "/control/speed/target", 10)
 
-        self.target_subscription = self.create_subscription(
-            Float32, "/control/speed/limit", self.callback_target, 10
+        self.limit_subscription = self.create_subscription(
+            Float32, "/control/speed/limit", self.callback_limit, 10
         )
 
         self.current_subscription = self.create_subscription(
             Float32, "/sensor/speed", self.callback_current, 10
         )
 
-    def callback_target(self, msg):
-        self.target = msg.data
-        self.get_logger().info('New Target: "%s"' % msg.data)
+    def callback_limit(self, msg):
+        self.limit = msg.data
+        self.get_logger().info(
+            'New Limit: "%s", Current Velocity "%s"' % msg.data, self.current
+        )
 
-        value = self.pid_controller.update(self.current, self.target)
+        value = self.pid_controller.update(self.current, self.limit)
         msg = Float32()
         msg.data = value
         self.publisher.publish(msg)
 
     def callback_current(self, msg):
         self.current = msg.data
-        self.get_logger().info('New Current Velocity: "%s"' % msg.data)
+        self.get_logger().info(
+            'New Current Velocity: "%s", Limit: "%s"' % msg.data, self.limit
+        )
 
-        value = self.pid_controller.update(self.current, self.target)
+        value = self.pid_controller.update(self.current, self.limit)
         msg = Float32()
         msg.data = value
         self.publisher.publish(msg)
