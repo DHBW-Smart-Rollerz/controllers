@@ -12,16 +12,18 @@ from controllers.controller_pid import PIDController
 class ControllerNode(Node):
 
     def __init__(self):
-        super().__init__("minimal_publisher")
+        super().__init__("controller_node")
 
         self.pid_controller = PIDController(2, 1, 0.5)
         self.current = 0
         self.target = 0
 
-        self.publisher = self.create_publisher(Float32, "topic", 10)
+        self.publisher = self.create_publisher(Float32, "/control/speed/target", 10)
+
         self.target_subscription = self.create_subscription(
-            Float32, "/control/speed/target", self.callback_target, 10
+            Float32, "/control/speed/limit", self.callback_target, 10
         )
+
         self.current_subscription = self.create_subscription(
             Float32, "/sensor/speed", self.callback_current, 10
         )
