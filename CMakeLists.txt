@@ -36,6 +36,7 @@ install(PROGRAMS
   scripts/longitudinal_controller_node.py
   scripts/lateral_controller_node_lqr_1.py
   scripts/lateral_controller_node_lqr_2.py
+  scripts/lateral_controller_node_stanley.py
   DESTINATION lib/${PROJECT_NAME})
 
 # Install launch files

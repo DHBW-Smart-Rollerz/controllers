@@ -11,10 +11,10 @@ from controllers.controller_lqr import (
 )
 
 
-class LateralControllerNode_1(Node):
+class LateralControllerNodeLQR_1(Node):
 
     def __init__(self):
-        super().__init__("lateral_controller_node")
+        super().__init__("lateral_controller_node_lqr_1")
 
         self.lqr_controller = LQRController()
         self.speed = 0
@@ -32,7 +32,7 @@ class LateralControllerNode_1(Node):
             Vector3, "/path_planning/target/left", self.callback_, 10
         )
 
-        self.left_polinom_subscription = self.create_subscription(
+        self.speed_subscription = self.create_subscription(
             Float32, "/control/speed/limit", self.callback_update, 10
         )
 
@@ -45,11 +45,13 @@ class LateralControllerNode_1(Node):
         temp_x, self.offset = distance_to_point(self.a, self.b, self.c, 0, 0)
         self.angle_delta = angle_with_x_axis(self.a, self.b, temp_x)
 
-        self.lqr_controller.get_control_signal(
+        value = self.lqr_controller.get_control_signal(
             self.speed, self.angle_delta, self.offset
         )
 
-        self.publisher.publish(msg)
+        msg_ = Int16()
+        msg_.data = value
+        self.publisher.publish(msg_)
 
     def callback_update(self, msg):
         self.speed = msg.data
@@ -59,7 +61,7 @@ class LateralControllerNode_1(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    node = LateralControllerNode_1()
+    node = LateralControllerNodeLQR_1()
 
     rclpy.spin(node)
 
