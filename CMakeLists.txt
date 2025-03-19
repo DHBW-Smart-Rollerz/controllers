@@ -33,7 +33,9 @@ install(TARGETS
 ament_python_install_package(${PROJECT_NAME})
 
 install(PROGRAMS
-  scripts/controller_node.py
+  scripts/longitudinal_controller_node.py
+  scripts/lateral_controller_node_lqr_1.py
+  scripts/lateral_controller_node_lqr_2.py
   DESTINATION lib/${PROJECT_NAME})
 
 # Install launch files

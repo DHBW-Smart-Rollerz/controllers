@@ -3,16 +3,15 @@
 import rclpy
 from rclpy.node import Node
 
-from std_msgs.msg import String, Float32
-
+from std_msgs.msg import Float32
 
 from controllers.controller_pid import PIDController
 
 
-class ControllerNode(Node):
+class LongitudinalControllerNode(Node):
 
     def __init__(self):
-        super().__init__("controller_node")
+        super().__init__("longitudinal_controller_node")
 
         self.pid_controller = PIDController(2, 1, 0.5)
         self.current = 0
@@ -46,15 +45,15 @@ class ControllerNode(Node):
         )
 
         value = self.pid_controller.update(self.current, self.limit)
-        msg = Float32()
-        msg.data = value
-        self.publisher.publish(msg)
+        msg_ = Float32()
+        msg_.data = value
+        self.publisher.publish(msg_)
 
 
 def main(args=None):
     rclpy.init(args=args)
 
-    node = ControllerNode()
+    node = LongitudinalControllerNode()
 
     rclpy.spin(node)
 
