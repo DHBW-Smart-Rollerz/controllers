@@ -4,6 +4,7 @@ from rclpy.node import Node
 
 from std_msgs.msg import Int16, Float32
 from geometry_msgs.msg import Vector3
+import numpy as np
 
 from controllers.controller_lqr import (
     LQRController,
@@ -12,12 +13,13 @@ from controllers.controller_lqr import (
 )
 
 
-class LateralControllerNodeLQR_2(Node):
+class LateralControllerNodeLQR_3(Node):
 
     def __init__(self):
-        super().__init__("lateral_controller_node_lqr_2")
+        super().__init__("lateral_controller_node_lqr_3")
 
         self.lqr_controller = LQRController()
+        self.lqr_controller.K_lqr = np.array([[-3.16227766, 15.30259459]])
         self.speed = 0
         self.polyom_a = 0
         self.polyom_b = 0
@@ -62,7 +64,7 @@ class LateralControllerNodeLQR_2(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    node = LateralControllerNodeLQR_2()
+    node = LateralControllerNodeLQR_3()
 
     rclpy.spin(node)
 
