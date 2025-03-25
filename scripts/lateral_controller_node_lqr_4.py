@@ -3,10 +3,10 @@
 import rclpy
 from rclpy.node import Node
 
-from std_msgs.msg import Int16, Float32
+from std_msgs.msg import Int16
 from geometry_msgs.msg import Vector3
 
-from controllers.controller_lqr import LQRController
+from controllers.controller_lqr_2 import LQRController
 
 import numpy as np
 
@@ -36,12 +36,15 @@ def angle_with_y_axis(a, b, x0):
     return angle
 
 
-class LateralControllerNodeLQR_1(Node):
+class LateralControllerNodeLQR_4(Node):
 
     def __init__(self):
         super().__init__("lateral_controller_node_lqr_1")
 
+        self.get_logger().info("LQR Node initialized – Hallo!")
+
         self.lqr_controller = LQRController()
+        self.speed = 0.2  # fest angenommen wie im MATLAB-Skript
 
         self.publisher = self.create_publisher(
             Int16, "/control/steering_angle/target", 10
@@ -65,6 +68,11 @@ class LateralControllerNodeLQR_1(Node):
         control = self.lqr_controller.get_control_signal(
             [angle_delta, offset], curvature
         )
+
+        self.get_logger().info(
+            f"Berechnetes u (Lenkwinkel): {control}°, delta={angle_delta:.2f}, offset={offset:.3f}, k={curvature:.3f}"
+        )
+
         msg_out = Int16()
         msg_out.data = control
         self.publisher.publish(msg_out)
@@ -72,7 +80,7 @@ class LateralControllerNodeLQR_1(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = LateralControllerNodeLQR_1()
+    node = LateralControllerNodeLQR_4()
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()

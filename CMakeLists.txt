@@ -24,7 +24,6 @@ add_executable(stanley_controller src/stanley_main.cpp)
 target_link_libraries(stanley_controller stanley_controller_lib)
 ament_target_dependencies(stanley_controller rclcpp geometry_msgs)
 
-
 # Install targets
 install(TARGETS
   stanley_controller
@@ -36,6 +35,8 @@ install(PROGRAMS
   scripts/longitudinal_controller_node.py
   scripts/lateral_controller_node_lqr_1.py
   scripts/lateral_controller_node_lqr_2.py
+  scripts/lateral_controller_node_lqr_3.py
+  scripts/lateral_controller_node_lqr_4.py
   scripts/lateral_controller_node_stanley.py
   DESTINATION lib/${PROJECT_NAME})
 
