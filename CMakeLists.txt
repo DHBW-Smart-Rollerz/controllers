@@ -37,6 +37,7 @@ install(PROGRAMS
   scripts/lateral_controller_node_lqr_2.py
   scripts/lateral_controller_node_lqr_3.py
   scripts/lateral_controller_node_lqr_4.py
+  scripts/lateral_controller_node_lqr_5.py
   scripts/lateral_controller_node_stanley.py
   DESTINATION lib/${PROJECT_NAME})
 
