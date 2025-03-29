@@ -58,7 +58,7 @@ class LateralControllerNodeLQR_5(Node):
         )
 
         self.left_polinom_subscription = self.create_subscription(
-            Float32, "/control/speed/limit", self.limit_callback, 10
+            Float32, "/control/speed/target", self.limit_callback, 10 # should be ../limit but sensor not implemented yet
         )
 
     def path_callback(self, msg):
