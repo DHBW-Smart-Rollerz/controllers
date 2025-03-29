@@ -22,6 +22,10 @@ def distance_to_point(a, b, c, x0, y0):
     return result.x[0], result.fun
 
 
+def distance_to_origin(a, b, c, x0, y0):
+    return 0, c
+
+
 def angle_with_x_axis(a, b, x0):
     derivative = 2 * a * x0 + b
     return np.degrees(np.arctan(derivative))
