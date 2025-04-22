@@ -2,14 +2,12 @@
 
 import rclpy
 from rclpy.node import Node
-
 from std_msgs.msg import Float32
 
 from controllers.controller_pid import PIDController
 
 
 class LongitudinalControllerNode(Node):
-
     def __init__(self):
         super().__init__("longitudinal_controller_node")
 
@@ -30,7 +28,8 @@ class LongitudinalControllerNode(Node):
     def callback_limit(self, msg):
         self.limit = msg.data
         self.get_logger().info(
-            'New Limit: "%s", Current Velocity "%s"' % msg.data, self.current
+            # 'New Limit: "%s", Current Velocity "%s"' % msg.data, self.current
+            f"New Limit: {self.limit}, Current Velocity {self.current}"
         )
 
         value = self.pid_controller.update(self.current, self.limit)
@@ -40,9 +39,9 @@ class LongitudinalControllerNode(Node):
 
     def callback_current(self, msg):
         self.current = msg.data
-        self.get_logger().info(
-            'New Current Velocity: "%s", Limit: "%s"' % msg.data, self.limit
-        )
+        # self.get_logger().info(
+        #     #  'New Current Velocity: "%s", Limit: "%s"' % msg.data, self.limit
+        # )
 
         value = self.pid_controller.update(self.current, self.limit)
         msg_ = Float32()

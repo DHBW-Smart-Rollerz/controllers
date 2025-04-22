@@ -1,10 +1,9 @@
 import numpy as np
 from scipy.linalg import expm, solve_discrete_are
-from scipy.optimize import minimize
 
 
 class LQRController:
-    def __init__(self, Ts=0.014, v=0.2, l=0.7, D=1.0):
+    def __init__(self, Ts=0.001, v=0.2, l=0.7, D=0):
         self.Ts = Ts
         self.v = v
         self.l = l
@@ -22,8 +21,8 @@ class LQRController:
         self.Ed = Phi_int @ E
 
         # LQR Design
-        Q = np.diag([20, 20])
-        R = np.array([[1]])
+        Q = np.diag([10, 30])
+        R = np.array([[10000]])
 
         P = solve_discrete_are(self.Ad, self.Bd, Q, R)
         self.K = np.linalg.inv(R + self.Bd.T @ P @ self.Bd) @ (self.Bd.T @ P @ self.Ad)
@@ -48,6 +47,6 @@ class LQRController:
         :return: Lenkwinkel (in Grad, begrenzt auf ±45)
         """
         x = np.array(x).reshape(2, 1)
-        u = -self.K @ x + self.Nk * k
+        u = -self.K @ x  # + self.Nk * k
         u = np.clip(u, -np.pi / 4, np.pi / 4)  # Begrenzung ±45°
         return int(np.degrees(u.item()))

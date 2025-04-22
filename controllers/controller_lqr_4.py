@@ -1,10 +1,10 @@
 import numpy as np
-from scipy.signal import cont2discrete
 from scipy.linalg import solve_discrete_are
+from scipy.signal import cont2discrete
 
 
 class LQRController:
-    def __init__(self, Ts=0.1, v=10.0, l=2.5, D=1.0):
+    def __init__(self, Ts=0.005, v=1.00, l=0.27, D=0.2):
         self.xi = 0.0  # Integratorzustand
         self.update_parameters(Ts, v, l, D)
 
@@ -42,8 +42,8 @@ class LQRController:
         self.Bd = Bd
 
         # LQR-Auslegung
-        Q = np.diag([10.0, 1.0, 100.0])  # Zustände: Δψ, Δy, xi
-        R = np.array([[1.0]])
+        Q = np.diag([20.0, 50.0, 10])  # Zustände: Δψ, Δy, xi
+        R = np.array([[50]])
 
         P = solve_discrete_are(Ad, Bd, Q, R)
         K_total = np.linalg.inv(Bd.T @ P @ Bd + R) @ (Bd.T @ P @ Ad)
@@ -64,7 +64,7 @@ class LQRController:
 
         # Fehler und Integration
         e = y_ref - y
-        self.xi += self.Ts * e
+        self.xi = self.Ts * e
 
         # Steuerbefehl
         u = -self.Kx @ x.flatten() - self.Ki * self.xi

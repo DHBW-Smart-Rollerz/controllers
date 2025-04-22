@@ -1,19 +1,17 @@
 #! /usr/bin/env python3
 import rclpy
-from rclpy.node import Node
-
-from std_msgs.msg import Int16, Float32
 from geometry_msgs.msg import Vector3
+from rclpy.node import Node
+from std_msgs.msg import Float32, Int16
 
 from controllers.controller_lqr import (
     LQRController,
-    distance_to_point,
     angle_with_x_axis,
+    distance_to_point,
 )
 
 
 class LateralControllerNodeLQR_1(Node):
-
     def __init__(self):
         super().__init__("lateral_controller_node_lqr_1")
 
@@ -38,7 +36,6 @@ class LateralControllerNodeLQR_1(Node):
         )
 
     def callback_(self, msg):
-
         self.a = msg.x
         self.b = msg.y
         self.c = msg.z
@@ -50,6 +47,7 @@ class LateralControllerNodeLQR_1(Node):
             self.speed, self.angle_delta, self.offset
         )
 
+        value = int(value)
         msg_ = Int16()
         msg_.data = value
         self.publisher.publish(msg_)

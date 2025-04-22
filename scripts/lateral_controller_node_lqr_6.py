@@ -1,21 +1,21 @@
 #! /usr/bin/env python3
 
+import numpy as np
 import rclpy
-from rclpy.node import Node
-
-from std_msgs.msg import Int16, Float32
 from geometry_msgs.msg import Vector3
+from rclpy.node import Node
+from scipy.optimize import minimize
+from std_msgs.msg import Float32, Int16
 
 from controllers.controller_lqr_4 import LQRController
-
-import numpy as np
-from scipy.optimize import minimize
 
 
 def distance_to_point(a, b, c, x0, y0):
     def distance(x):
         y = a * x**2 + b * x + c
         return np.sqrt((x - x0) ** 2 + (y - y0) ** 2)
+
+    from scipy.optimize import minimize
 
     result = minimize(distance, 0)
     return result.x[0], result.fun
@@ -28,15 +28,15 @@ def angle_with_x_axis(a, b, x0):
 
 def angle_with_y_axis(a, b, x0):
     # Calculate derivative at x0
+    x0 = 0
     derivative = 2 * a * x0 + b
-
-    # Angle with y-axis = π/2 - arctangent of slope
-    angle = (np.pi / 2) - np.arctan(derivative)
-    return angle
+    tmp = np.arctan(derivative)
+    # Calculate angle with y-axis in degrees (90° - angle with x-axis)
+    angle = np.pi / 2 - tmp
+    return angle, tmp
 
 
 class LateralControllerNode4(Node):
-
     def __init__(self):
         super().__init__("lateral_controller_node_lqr_integrator")
 
@@ -62,22 +62,22 @@ class LateralControllerNode4(Node):
         c = msg.z
 
         x_closest, offset = distance_to_point(a, b, c, 0, 0)
-        angle_delta = angle_with_y_axis(a, b, 0)
+        angle_delta, tmp = angle_with_y_axis(a, b, 0)
 
         # Krümmung aus zweiter Ableitung
-        curvature = 2 * a / (1 + (2 * a * x_closest + b) ** 2) ** 1.5
         offset = offset / 1000.0  # mm -> m
 
-        control = self.lqr_controller.get_control_signal(
-            [angle_delta, offset], y_ref=0.0
-        )
+        curvature = 0
+        offset = offset - 0.2
+        control = self.lqr_controller.get_control_signal([tmp, offset], y_ref=0.0)
 
         self.get_logger().info(
-            f"u={control:.3f} rad | Δψ={angle_delta:.2f}°, offset={offset:.3f} m, k={curvature:.3f}"
+            f"steuerung={control:.3f} rad | winkelfehler={tmp:.2f}°, offset={offset:.3f} m, k={curvature:}, temp = {angle_delta:.3f}"
         )
 
         # Umrechnung und Begrenzung
         control_deg = int(np.clip(np.rad2deg(control), -45, 45))
+        control_deg = control_deg * -1
 
         msg_out = Int16()
         msg_out.data = control_deg

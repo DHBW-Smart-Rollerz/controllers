@@ -1,6 +1,6 @@
 import numpy as np
-from scipy.optimize import minimize
 from scipy.linalg import solve_continuous_are
+from scipy.optimize import minimize
 
 
 class LQRController:
@@ -8,7 +8,7 @@ class LQRController:
         if Q is None:
             Q = np.diag([10, 10])
         if R is None:
-            R = np.array([[1]])
+            R = np.array([[200]])
 
         self.Q = Q
         self.R = R

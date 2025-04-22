@@ -1,16 +1,14 @@
 #! /usr/bin/env python3
 import rclpy
-from rclpy.node import Node
-
-from std_msgs.msg import Int16, Float32
 from geometry_msgs.msg import Vector3
+from rclpy.node import Node
+from std_msgs.msg import Float32, Int16
 
+from controllers.controller_lqr import angle_with_x_axis, distance_to_point
 from controllers.controller_stanley import calculate_steering_angle
-from controllers.controller_lqr import distance_to_point, angle_with_x_axis
 
 
 class LateralControllerNode_Stanley(Node):
-
     def __init__(self):
         super().__init__("lateral_controller_node_stanley")
 
@@ -30,11 +28,10 @@ class LateralControllerNode_Stanley(Node):
         )
 
         self.speed_subscription = self.create_subscription(
-            Float32, "/sensor/speed", self.callback_update, 10
+            Float32, "/controller/speed/target", self.callback_update, 10
         )
 
     def callback_(self, msg):
-
         self.a = msg.x
         self.b = msg.y
         self.c = msg.z
@@ -43,10 +40,7 @@ class LateralControllerNode_Stanley(Node):
         self.angle_delta = angle_with_x_axis(self.a, self.b, temp_x)
 
         value = calculate_steering_angle(
-            self.speed,
-            self.offset,
-            self.angle_delta,
-            45,
+            self.speed, self.offset, self.angle_delta, 1, 45
         )
 
         msg_ = Int16()

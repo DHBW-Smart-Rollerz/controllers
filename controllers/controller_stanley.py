@@ -1,4 +1,5 @@
 import math
+
 import numpy as np
 
 
@@ -15,6 +16,8 @@ def calculate_steering_angle(v, e, phi, Ke, max_steering_angle):
     Returns:
     psi: Calculated steering angle theta(t).
     """
+    if v == 0:
+        return 0
     psi = phi + math.atan((Ke * e) / v)
     psi = np.clip(psi, -max_steering_angle, max_steering_angle)
 
