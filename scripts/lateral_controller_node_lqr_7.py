@@ -1,15 +1,19 @@
 #! /usr/bin/env python3
 
-from time import time
-
-import numpy as np
 import rclpy
-from geometry_msgs.msg import Vector3
 from rclpy.node import Node
-from scipy.optimize import minimize
-from std_msgs.msg import Float32, Int16
+from lane_msgs.msg import LaneDetectionResult, Lane
+
+from std_msgs.msg import Int16, Float32, String
+from geometry_msgs.msg import Vector3
 
 from controllers.controller_lqr_4 import LQRController
+
+# from smarty_utils import location
+
+import numpy as np
+from scipy.optimize import minimize
+from time import time
 
 
 def distance_to_point(a, b, c, x0, y0):
@@ -29,6 +33,7 @@ def angle_with_y_axis(a, b, x0):
 
 
 class LateralControllerNode4(Node):
+
     def __init__(self):
         super().__init__("lateral_controller_node_lqr_integrator")
 
@@ -40,55 +45,51 @@ class LateralControllerNode4(Node):
             Int16, "/control/steering_angle/target", 10
         )
 
-        self.path_subscription = self.create_subscription(
-            Vector3, "/path_planning/target/left", self.path_callback_l, 10
-        )
-        self.path_subscription = self.create_subscription(
-            Vector3, "/path_planning/target/right", self.path_callback_r, 10
-        )
+        # self.path_subscription = self.create_subscription(
+        #    Vector3, "/path_planning/target/left", self.path_callback_l, 10
+        # )
+        # self.path_subscription = self.create_subscription(
+        #    Vector3, "/path_planning/target/right", self.path_callback_r, 10
+        # )
 
         self.speed_subscription = self.create_subscription(
             Float32, "/control/speed/limit", self.limit_callback, 10
         )
 
-        self.speed_subscription = self.create_subscription(
-            Float32, "/control/speed/limit", self.limit_callback, 10
+        self.get_lane = self.create_subscription(
+            Float32, "/state_machine/go_lane", self.limit_callback, 10
         )
-        # /state_machine/go_lane
 
-        self.latest_path_l = None
-        self.latest_path_r = None
+        self.debug_lane_detection_sub = self.create_subscription(
+            LaneDetectionResult, "/lane_detection/lane", self.ld_callback, 10
+        )
+
+        self.lane_mode_sub = self.create_subscription(
+            String, "/state_machine/goal_lane", self.change_mode, 10
+        )
+
+        self.latest_path = None
         self.last_path_time = 0.0  # Zeitstempel des letzten Pfads
         self.new_path_available = False
+        self.lane_mode = "left"
+        # self.lane_mode = "right"
 
         timer_period = 0.020  # 1 ms → 1000 Hz
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
-    def path_callback_l(self, msg):
-        self.latest_path_l = (msg.x, msg.y, msg.z)
-        self.last_path_time = time()
-        self.new_path_available = True
-
-    def path_callback_r(self, msg):
-        self.latest_path_r = (msg.x, msg.y, msg.z)
-
     def timer_callback(self):
-        if self.latest_path_l is None:
+
+        if self.latest_path is None:
             self.get_logger().warn("No path data available.")
             return
 
-        a_l, b_l, c_l = self.latest_path_l
-        x_closest, offset_l = distance_to_point(a_l, b_l, c_l, 0, 0)
+        a, b, c = self.latest_path
+        x_closest, offset = distance_to_point(a, b, c, 0, 0)
 
-        a_r, b_r, c_r = self.latest_path_r
-        x_closest, offset_r = distance_to_point(a_r, b_r, c_r, 0, 0)
-
-        offset = offset_l  # - offset_r
-
-        angle_with_y, angle_with_x = angle_with_y_axis(a_l, b_l, 0)
+        angle_with_y, angle_with_x = angle_with_y_axis(a, b, 0)
 
         offset = offset / 1000.0  # mm → m
-        offset -= 0.10  # ggf. Sensor-Korrektur
+        offset -= 0.0  # ggf. Sensor-Korrektur
 
         curvature = 0  # Platzhalter
 
@@ -123,6 +124,33 @@ class LateralControllerNode4(Node):
             self.lqr_controller.D,
         )
         self.get_logger().info(f"Speed updated to: {self.lqr_controller.v:.2f} m/s")
+
+    def ld_callback(self, msg: LaneDetectionResult):
+        if self.lane_mode == "left":  # TODO: ENUM
+            self.latest_path = (
+                msg.trajectory_left.x,
+                msg.trajectory_left.y,
+                msg.trajectory_left.z,
+            )
+            self.last_path_time = time()
+            self.new_path_available = True
+
+        if self.lane_mode == "right":  # TODO: Enum
+            self.latest_path = (
+                msg.trajectory_right.x,
+                msg.trajectory_right.y,
+                msg.trajectory_right.z,
+            )
+            self.last_path_time = time()
+            self.new_path_available = True
+
+    def change_mode(self, msg: String):
+        self.lane_mode = msg.data  # TODO: Enum
+
+    # def path_callback_l(self, msg):
+    #    self.latest_path_l = (msg.x, msg.y, msg.z)
+    #    self.last_path_time = time()
+    #    self.new_path_available = True
 
 
 def main(args=None):
