@@ -4,6 +4,7 @@ import rclpy
 from rclpy.node import Node
 from lane_msgs.msg import LaneDetectionResult, Lane
 
+from smarty_utils.enums import Location
 from std_msgs.msg import Int16, Float32, String
 from geometry_msgs.msg import Vector3
 
@@ -14,6 +15,7 @@ from controllers.controller_lqr_4 import LQRController
 import numpy as np
 from scipy.optimize import minimize
 from time import time
+from scipy.interpolate import interp1d
 
 
 def distance_to_point(a, b, c, x0, y0):
@@ -71,8 +73,8 @@ class LateralControllerNode4(Node):
         self.latest_path = None
         self.last_path_time = 0.0  # Zeitstempel des letzten Pfads
         self.new_path_available = False
-        self.lane_mode = "left"
-        # self.lane_mode = "right"
+        self.lane_mode = Location.LEFT
+        # self.lane_mode = Location.RIGHT
 
         timer_period = 0.020  # 1 ms → 1000 Hz
         self.timer = self.create_timer(timer_period, self.timer_callback)
@@ -125,27 +127,54 @@ class LateralControllerNode4(Node):
         )
         self.get_logger().info(f"Speed updated to: {self.lqr_controller.v:.2f} m/s")
 
+    def extract_points(self, lane: Lane) -> np.ndarray:
+        points = [[point.x, point.y, point.z] for point in lane.points]
+        points = np.array(points)
+        points = points[points[:, 0].argsort()]
+        return points
+
+    def extract_lane(self, left: Lane, right: Lane) -> tuple[float, float, float]:
+        left_p = self.extract_points(left)
+        right_p = self.extract_points(right)
+
+        # Interpolate points to ensure both arrays have the same x coordinates
+
+        # Interpolate left and right lanes
+        x_min = max(left_p[:, 0].min(), right_p[:, 0].min())
+        x_max = min(left_p[:, 0].max(), right_p[:, 0].max())
+        x_common = np.linspace(x_min, x_max, num=100)
+
+        left_interp = interp1d(
+            left_p[:, 0], left_p[:, 1], kind="linear", fill_value="extrapolate"
+        )
+        right_interp = interp1d(
+            right_p[:, 0], right_p[:, 1], kind="linear", fill_value="extrapolate"
+        )
+
+        y_left = left_interp(x_common)
+        y_right = right_interp(x_common)
+
+        # Get the middle points
+        x = x_common
+        y = (y_left + y_right) / 2
+
+        # Fit a polynomial of degree 2 to the middle points
+        coeffs = np.polyfit(x, y, 2)
+        return coeffs[0], coeffs[1], coeffs[2]
+
     def ld_callback(self, msg: LaneDetectionResult):
-        if self.lane_mode == "left":  # TODO: ENUM
-            self.latest_path = (
-                msg.trajectory_left.x,
-                msg.trajectory_left.y,
-                msg.trajectory_left.z,
-            )
+        if self.lane_mode == Location.LEFT:
+            self.latest_path = self.extract_lane(msg.left, msg.center)
             self.last_path_time = time()
             self.new_path_available = True
 
-        if self.lane_mode == "right":  # TODO: Enum
-            self.latest_path = (
-                msg.trajectory_right.x,
-                msg.trajectory_right.y,
-                msg.trajectory_right.z,
-            )
+        if self.lane_mode == Location.RIGHT:
+            self.latest_path = self.extract_lane(msg.center, msg.right)
             self.last_path_time = time()
             self.new_path_available = True
 
     def change_mode(self, msg: String):
-        self.lane_mode = msg.data  # TODO: Enum
+        self.lane_mode = Location(msg.data)
 
     # def path_callback_l(self, msg):
     #    self.latest_path_l = (msg.x, msg.y, msg.z)
