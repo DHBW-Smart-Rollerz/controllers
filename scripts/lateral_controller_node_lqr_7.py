@@ -24,6 +24,9 @@ def distance_to_point(a, b, c, x0, y0):
         return np.sqrt((x - x0) ** 2 + (y - y0) ** 2)
 
     result = minimize(distance, 0)
+    if c < 0:
+        result = -result
+
     return result.x[0], result.fun
 
 
