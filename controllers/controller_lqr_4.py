@@ -4,7 +4,7 @@ from scipy.signal import cont2discrete
 
 
 class LQRController:
-    def __init__(self, Ts=0.005, v=1.00, l=0.27, D=0.2):
+    def __init__(self, Ts=0.005, v=0.02, l=0.27, D=0.5):
         self.xi = 0.0  # Integratorzustand
         self.update_parameters(Ts, v, l, D)
 

@@ -1,21 +1,20 @@
 #! /usr/bin/env python3
 
-import rclpy
-from rclpy.node import Node
-from lane_msgs.msg import LaneDetectionResult, Lane
+from time import time
 
-from smarty_utils.enums import Location
-from std_msgs.msg import Int16, Float32, String
+import numpy as np
+import rclpy
 from geometry_msgs.msg import Vector3
+from lane_msgs.msg import Lane, LaneDetectionResult
+from rclpy.node import Node
+from scipy.interpolate import interp1d
+from scipy.optimize import minimize
+from smarty_utils.enums import Location
+from std_msgs.msg import Float32, Int16, String
 
 from controllers.controller_lqr_4 import LQRController
 
 # from smarty_utils import location
-
-import numpy as np
-from scipy.optimize import minimize
-from time import time
-from scipy.interpolate import interp1d
 
 
 def distance_to_point(a, b, c, x0, y0):
@@ -24,8 +23,8 @@ def distance_to_point(a, b, c, x0, y0):
         return np.sqrt((x - x0) ** 2 + (y - y0) ** 2)
 
     result = minimize(distance, 0)
-    if c < 0:
-        result = -result
+    # if c < 0:
+    #     result = -result
 
     return result.x[0], result.fun
 
@@ -38,7 +37,6 @@ def angle_with_y_axis(a, b, x0):
 
 
 class LateralControllerNode4(Node):
-
     def __init__(self):
         super().__init__("lateral_controller_node_lqr_integrator")
 
@@ -58,7 +56,7 @@ class LateralControllerNode4(Node):
         # )
 
         self.speed_subscription = self.create_subscription(
-            Float32, "/control/speed/limit", self.limit_callback, 10
+            Float32, "/sensor/velocity", self.limit_callback, 10
         )
 
         self.get_lane = self.create_subscription(
@@ -76,50 +74,54 @@ class LateralControllerNode4(Node):
         self.latest_path = None
         self.last_path_time = 0.0  # Zeitstempel des letzten Pfads
         self.new_path_available = False
-        self.lane_mode = Location.LEFT
+        self.lane_mode = Location.RIGHT_LANE
         # self.lane_mode = Location.RIGHT
 
         timer_period = 0.020  # 1 ms → 1000 Hz
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
     def timer_callback(self):
+        try:
+            if self.latest_path is None:
+                self.get_logger().warn("No path data available.")
+                return
 
-        if self.latest_path is None:
-            self.get_logger().warn("No path data available.")
-            return
+            a, b, c = self.latest_path
+            x_closest, offset = distance_to_point(a, b, c, 0, 0)
 
-        a, b, c = self.latest_path
-        x_closest, offset = distance_to_point(a, b, c, 0, 0)
+            angle_with_y, angle_with_x = angle_with_y_axis(a, b, 0)
 
-        angle_with_y, angle_with_x = angle_with_y_axis(a, b, 0)
+            offset = offset / 1000.0  # mm → m
+            offset -= 0.175  # ggf. Sensor-Korrektur
 
-        offset = offset / 1000.0  # mm → m
-        offset -= 0.0  # ggf. Sensor-Korrektur
+            curvature = 0  # Platzhalter
 
-        curvature = 0  # Platzhalter
+            control = self.lqr_controller.get_control_signal(
+                [angle_with_x, offset], y_ref=0.0
+            )
 
-        control = self.lqr_controller.get_control_signal(
-            [angle_with_x, offset], y_ref=0.0
-        )
+            if self.new_path_available:
+                self.get_logger().info("🟢 Neue Lane-Daten verwendet.")
+            else:
+                age = time() - self.last_path_time
+                self.get_logger().info(
+                    f"🟡 Alte Lane-Daten verwendet ({age:.3f} s alt)."
+                )
 
-        if self.new_path_available:
-            self.get_logger().info("🟢 Neue Lane-Daten verwendet.")
-        else:
-            age = time() - self.last_path_time
-            self.get_logger().info(f"🟡 Alte Lane-Daten verwendet ({age:.3f} s alt).")
+            self.new_path_available = False
 
-        self.new_path_available = False
+            self.get_logger().info(
+                f"Steuerung = {control:.3f} rad | Winkel = {angle_with_x:.2f} rad | "
+                f"Offset = {offset:.3f} m | Krümmung = {curvature} | temp = {angle_with_y:.3f}"
+            )
 
-        self.get_logger().info(
-            f"Steuerung = {control:.3f} rad | Winkel = {angle_with_x:.2f} rad | "
-            f"Offset = {offset:.3f} m | Krümmung = {curvature} | temp = {angle_with_y:.3f}"
-        )
+            control_deg = int(np.clip(np.rad2deg(control), -30, 30)) * -1
 
-        control_deg = int(np.clip(np.rad2deg(control), -30, 30)) * -1
-
-        msg_out = Int16()
-        msg_out.data = control_deg
-        self.publisher.publish(msg_out)
+            msg_out = Int16()
+            msg_out.data = control_deg
+            self.publisher.publish(msg_out)
+        except Exception as e:
+            pass
 
     def limit_callback(self, msg):
         self.lqr_controller.update_parameters(
@@ -166,12 +168,12 @@ class LateralControllerNode4(Node):
         return coeffs[0], coeffs[1], coeffs[2]
 
     def ld_callback(self, msg: LaneDetectionResult):
-        if self.lane_mode == Location.LEFT:
+        if self.lane_mode == Location.LEFT_LANE:
             self.latest_path = self.extract_lane(msg.left, msg.center)
             self.last_path_time = time()
             self.new_path_available = True
 
-        if self.lane_mode == Location.RIGHT:
+        if self.lane_mode == Location.RIGHT_LANE:
             self.latest_path = self.extract_lane(msg.center, msg.right)
             self.last_path_time = time()
             self.new_path_available = True
